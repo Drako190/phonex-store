@@ -33,7 +33,7 @@ app.use(helmet({
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://127.0.0.1:5500',  // Live Server de VS Code
+    'https://phonex-store.vercel.app/',  // Live Server de VS Code
     'http://localhost:5500',
   ],
   credentials: true,
