@@ -9,7 +9,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
-const connectDB = require('./config/db');
+const { connectDB } = require('./config/db');
 
 // ── Rutas ──────────────────────────────────────
 const authRoutes     = require('./routes/auth');
@@ -31,11 +31,7 @@ app.use(helmet({
 
 // ── CORS ───────────────────────────────────────
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'https://phonex-store.vercel.app/',  // Live Server de VS Code
-    'http://localhost:5500',
-  ],
+  origin: true,   // ← permite CUALQUIER origen (perfecto para desarrollo)
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization'],

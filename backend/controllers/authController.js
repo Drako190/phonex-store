@@ -1,238 +1,186 @@
-// ════════════════════════════════════════════════
-//  controllers/authController.js
-// ════════════════════════════════════════════════
-const User = require('../models/User');
+// controllers/authController.js — Con Supabase
+const { supabase } = require('../config/db');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
-// ── Generar JWT ────────────────────────────────
-const generarToken = (id, rol) => {
-  return jwt.sign({ id, rol }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
-};
+const generarToken = (id, rol) =>
+  jwt.sign({ id, rol }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 
-// ── Configurar transporte de email ─────────────
-const crearTransporter = () => nodemailer.createTransport({
-  host:   process.env.EMAIL_HOST,
-  port:   parseInt(process.env.EMAIL_PORT) || 587,
-  secure: false,
-  auth:   { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-});
-
-// ── REGISTRAR ─────────────────────────────────
+// REGISTRAR
 exports.register = async (req, res) => {
   try {
     const { nombre, apellido, email, password, telefono } = req.body;
 
-    // Verificar si el email ya existe
-    const existente = await User.findOne({ email });
-    if (existente) {
-      return res.status(400).json({ error: 'Este email ya está registrado' });
-    }
+    // Verificar si existe
+    const { data: existe } = await supabase
+      .from('users').select('id').eq('email', email).single();
+    if (existe) return res.status(400).json({ error: 'Este email ya está registrado' });
 
-    // Crear usuario
-    const usuario = await User.create({ nombre, apellido, email, password, telefono });
+    // Hashear contraseña
+    const hash = await bcrypt.hash(password, parseInt(process.env.BCRYPT_ROUNDS) || 12);
 
-    const token = generarToken(usuario._id, usuario.rol);
+    const { data: usuario, error } = await supabase
+      .from('users')
+      .insert({ nombre, apellido, email, password: hash, telefono })
+      .select('id, nombre, apellido, email, rol, avatar')
+      .single();
 
-    res.status(201).json({
-      message: '✅ Cuenta creada exitosamente',
-      token,
-      usuario: {
-        id:       usuario._id,
-        nombre:   usuario.nombre,
-        apellido: usuario.apellido,
-        email:    usuario.email,
-        rol:      usuario.rol,
-        avatar:   usuario.avatar,
-      },
-    });
+    if (error) throw error;
+
+    const token = generarToken(usuario.id, usuario.rol);
+    res.status(201).json({ message: '✅ Cuenta creada', token, usuario });
   } catch (err) {
-    if (err.code === 11000) {
-      return res.status(400).json({ error: 'Este email ya está registrado' });
-    }
-    if (err.name === 'ValidationError') {
-      const errores = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ error: errores[0] });
-    }
     res.status(500).json({ error: 'Error al crear la cuenta' });
   }
 };
 
-// ── INICIAR SESIÓN ────────────────────────────
+// LOGIN
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Buscar usuario (incluir password que está oculto)
-    const usuario = await User.findOne({ email, activo: true }).select('+password');
-    if (!usuario) {
+    const { data: usuario } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .eq('activo', true)
+      .single();
+
+    if (!usuario) return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+
+    // Verificar bloqueo
+    if (usuario.bloqueado_hasta && new Date(usuario.bloqueado_hasta) > new Date()) {
+      const min = Math.ceil((new Date(usuario.bloqueado_hasta) - new Date()) / 60000);
+      return res.status(423).json({ error: `Cuenta bloqueada. Intenta en ${min} minutos` });
+    }
+
+    const correcto = await bcrypt.compare(password, usuario.password);
+    if (!correcto) {
+      const intentos = usuario.intentos_fallidos + 1;
+      const update = intentos >= 5
+        ? { intentos_fallidos: 0, bloqueado_hasta: new Date(Date.now() + 15 * 60000) }
+        : { intentos_fallidos: intentos };
+      await supabase.from('users').update(update).eq('id', usuario.id);
       return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     }
 
-    // Verificar si está bloqueado
-    if (usuario.bloqueadoHasta && usuario.bloqueadoHasta > Date.now()) {
-      const minutos = Math.ceil((usuario.bloqueadoHasta - Date.now()) / 60000);
-      return res.status(423).json({ error: `Cuenta bloqueada. Intenta en ${minutos} minutos` });
-    }
+    await supabase.from('users').update({
+      intentos_fallidos: 0, bloqueado_hasta: null, ultimo_login: new Date()
+    }).eq('id', usuario.id);
 
-    // Verificar contraseña
-    const passwordCorrecto = await usuario.compararPassword(password);
-    if (!passwordCorrecto) {
-      usuario.intentosFallidos += 1;
-      if (usuario.intentosFallidos >= 5) {
-        usuario.bloqueadoHasta = new Date(Date.now() + 15 * 60 * 1000); // 15 min
-        usuario.intentosFallidos = 0;
-      }
-      await usuario.save({ validateBeforeSave: false });
-      return res.status(401).json({ error: 'Email o contraseña incorrectos' });
-    }
-
-    // Resetear intentos fallidos y guardar último login
-    usuario.intentosFallidos = 0;
-    usuario.bloqueadoHasta = null;
-    usuario.ultimoLogin = new Date();
-    await usuario.save({ validateBeforeSave: false });
-
-    const token = generarToken(usuario._id, usuario.rol);
-
+    const token = generarToken(usuario.id, usuario.rol);
     res.json({
-      message: `✅ Bienvenido, ${usuario.nombre}!`,
-      token,
-      usuario: {
-        id:       usuario._id,
-        nombre:   usuario.nombre,
-        apellido: usuario.apellido,
-        email:    usuario.email,
-        rol:      usuario.rol,
-        avatar:   usuario.avatar,
-      },
+      message: `✅ Bienvenido, ${usuario.nombre}!`, token,
+      usuario: { id: usuario.id, nombre: usuario.nombre, apellido: usuario.apellido,
+        email: usuario.email, rol: usuario.rol, avatar: usuario.avatar }
     });
   } catch (err) {
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
 };
 
-// ── OLVIDÉ CONTRASEÑA ─────────────────────────
+// OLVIDÉ CONTRASEÑA
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+    const { data: usuario } = await supabase
+      .from('users').select('*').eq('email', email).eq('activo', true).single();
 
-    const usuario = await User.findOne({ email, activo: true });
-    // Por seguridad, siempre respondemos igual aunque no exista el email
-    if (!usuario) {
-      return res.json({ message: '📧 Si el email existe, recibirás un enlace de recuperación' });
-    }
+    if (!usuario) return res.json({ message: '📧 Si el email existe recibirás el enlace' });
 
-    const tokenReset = usuario.generarTokenReset();
-    await usuario.save({ validateBeforeSave: false });
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-    // URL de reset (ajusta según tu frontend)
-    const resetURL = `${process.env.FRONTEND_URL}/pages/reset-password.html?token=${tokenReset}`;
+    await supabase.from('users').update({
+      token_reset_password: tokenHash,
+      token_reset_expira: new Date(Date.now() + 30 * 60000)
+    }).eq('id', usuario.id);
 
-    // Enviar email
+    const resetURL = `${process.env.FRONTEND_URL}/pages/reset-password.html?token=${token}`;
+
     try {
-      const transporter = crearTransporter();
-      await transporter.sendMail({
-        from:    process.env.EMAIL_FROM,
-        to:      usuario.email,
-        subject: '🔐 Recupera tu contraseña — PhoneX Store',
-        html: `
-          <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0d0d14;color:#f0f0ff;padding:2rem;border-radius:12px;border:1px solid #1e1e2e">
-            <h2 style="color:#6c63ff">PhoneX Store</h2>
-            <h3>Recuperar contraseña</h3>
-            <p>Hola <strong>${usuario.nombre}</strong>, recibimos una solicitud para restablecer tu contraseña.</p>
-            <a href="${resetURL}" style="display:inline-block;background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:white;padding:12px 24px;border-radius:8px;text-decoration:none;margin:1rem 0;font-weight:600">
-              Restablecer contraseña
-            </a>
-            <p style="color:#6b6b8a;font-size:0.85rem">Este enlace expira en <strong>30 minutos</strong>. Si no solicitaste esto, ignora este email.</p>
-            <hr style="border-color:#1e1e2e">
-            <p style="color:#3a3a5c;font-size:0.75rem">© PhoneX Store — Proyecto Universitario</p>
-          </div>
-        `,
+      const transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST, port: parseInt(process.env.EMAIL_PORT) || 587,
+        secure: false, auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
       });
-    } catch (emailErr) {
-      console.error('Error enviando email:', emailErr);
-      usuario.tokenResetPassword = undefined;
-      usuario.tokenResetPasswordExpira = undefined;
-      await usuario.save({ validateBeforeSave: false });
-      return res.status(500).json({ error: 'Error al enviar el email. Verifica la configuración.' });
+      await transporter.sendMail({
+        from: process.env.EMAIL_FROM, to: usuario.email,
+        subject: '🔐 Recupera tu contraseña — PhoneX Store',
+        html: `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0d0d14;color:#f0f0ff;padding:2rem;border-radius:12px">
+          <h2 style="color:#6c63ff">PhoneX Store</h2>
+          <p>Hola <strong>${usuario.nombre}</strong>, haz clic para restablecer tu contraseña:</p>
+          <a href="${resetURL}" style="display:inline-block;background:#6c63ff;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;margin:1rem 0">
+            Restablecer contraseña
+          </a>
+          <p style="color:#6b6b8a;font-size:0.85rem">Expira en 30 minutos.</p>
+        </div>`
+      });
+    } catch (e) {
+      await supabase.from('users').update({
+        token_reset_password: null, token_reset_expira: null
+      }).eq('id', usuario.id);
+      return res.status(500).json({ error: 'Error al enviar el email' });
     }
 
-    res.json({ message: '📧 Si el email existe, recibirás un enlace de recuperación' });
+    res.json({ message: '📧 Si el email existe recibirás el enlace' });
   } catch (err) {
     res.status(500).json({ error: 'Error al procesar la solicitud' });
   }
 };
 
-// ── RESETEAR CONTRASEÑA ───────────────────────
+// RESET PASSWORD
 exports.resetPassword = async (req, res) => {
   try {
-    const { token } = req.params;
-    const { password } = req.body;
+    const tokenHash = crypto.createHash('sha256').update(req.params.token).digest('hex');
+    const { data: usuario } = await supabase.from('users')
+      .select('*').eq('token_reset_password', tokenHash)
+      .gt('token_reset_expira', new Date().toISOString()).single();
 
-    // Hashear el token recibido para comparar con el guardado
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    if (!usuario) return res.status(400).json({ error: 'Token inválido o expirado' });
+    if (req.body.password.length < 8) return res.status(400).json({ error: 'Mínimo 8 caracteres' });
 
-    const usuario = await User.findOne({
-      tokenResetPassword: tokenHash,
-      tokenResetPasswordExpira: { $gt: Date.now() },
-    });
+    const hash = await bcrypt.hash(req.body.password, parseInt(process.env.BCRYPT_ROUNDS) || 12);
+    await supabase.from('users').update({
+      password: hash, token_reset_password: null,
+      token_reset_expira: null, intentos_fallidos: 0, bloqueado_hasta: null
+    }).eq('id', usuario.id);
 
-    if (!usuario) {
-      return res.status(400).json({ error: 'Token inválido o expirado' });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
-    }
-
-    // Actualizar contraseña
-    usuario.password = password;
-    usuario.tokenResetPassword = undefined;
-    usuario.tokenResetPasswordExpira = undefined;
-    usuario.intentosFallidos = 0;
-    usuario.bloqueadoHasta = null;
-    await usuario.save();
-
-    const newToken = generarToken(usuario._id, usuario.rol);
-    res.json({
-      message: '✅ Contraseña actualizada exitosamente',
-      token: newToken,
-    });
+    const token = generarToken(usuario.id, usuario.rol);
+    res.json({ message: '✅ Contraseña actualizada', token });
   } catch (err) {
-    res.status(500).json({ error: 'Error al restablecer la contraseña' });
+    res.status(500).json({ error: 'Error al restablecer contraseña' });
   }
 };
 
-// ── OBTENER PERFIL (ruta protegida) ───────────
+// GET ME
 exports.getMe = async (req, res) => {
   try {
-    const usuario = await User.findById(req.usuario.id)
-      .populate('wishlist', 'nombre precio imagenPrincipal marca');
+    const { data: usuario } = await supabase
+      .from('users').select('id, nombre, apellido, email, rol, avatar, telefono')
+      .eq('id', req.usuario.id).single();
     res.json({ usuario });
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener el perfil' });
+    res.status(500).json({ error: 'Error al obtener perfil' });
   }
 };
 
-// ── ACTUALIZAR CONTRASEÑA (sesión activa) ─────
+// UPDATE PASSWORD
 exports.updatePassword = async (req, res) => {
   try {
     const { passwordActual, passwordNuevo } = req.body;
-    const usuario = await User.findById(req.usuario.id).select('+password');
+    const { data: usuario } = await supabase
+      .from('users').select('password').eq('id', req.usuario.id).single();
 
-    const correcto = await usuario.compararPassword(passwordActual);
+    const correcto = await bcrypt.compare(passwordActual, usuario.password);
     if (!correcto) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    if (passwordNuevo.length < 8) return res.status(400).json({ error: 'Mínimo 8 caracteres' });
 
-    if (passwordNuevo.length < 8) return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
+    const hash = await bcrypt.hash(passwordNuevo, parseInt(process.env.BCRYPT_ROUNDS) || 12);
+    await supabase.from('users').update({ password: hash }).eq('id', req.usuario.id);
 
-    usuario.password = passwordNuevo;
-    await usuario.save();
-
-    const token = generarToken(usuario._id, usuario.rol);
+    const token = generarToken(req.usuario.id, req.usuario.rol);
     res.json({ message: '✅ Contraseña actualizada', token });
   } catch (err) {
     res.status(500).json({ error: 'Error al actualizar contraseña' });

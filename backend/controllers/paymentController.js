@@ -4,8 +4,7 @@
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-const Order = require('../models/Order');
-const Product = require('../models/Product');
+const { supabase } = require('../config/db');
 
 // ───────────────────────────────────────────────
 // CREAR PAYMENT INTENT
@@ -101,30 +100,32 @@ exports.createPaymentIntent = async (req, res) => {
         },
       });
 
-    // ───────────────────────────────────────────
-    // Crear orden en MongoDB
-    // ───────────────────────────────────────────
-    const orden = await Order.create({
-      usuario: req.usuario.id,
+    // Verificar productos desde Supabase
+for (const item of items) {
+  const { data: producto } = await supabase
+    .from('products').select('*').eq('id', item.productoId).single();
+  if (!producto || !producto.activo)
+    return res.status(404).json({ error: `Producto no encontrado` });
+  if (producto.stock < item.cantidad)
+    return res.status(400).json({ error: `Stock insuficiente: ${producto.nombre}` });
+  subtotal += producto.precio * item.cantidad;
+  itemsVerificados.push({
+    producto_id: producto.id, nombre: producto.nombre,
+    imagen: producto.imagen_principal, precio: producto.precio, cantidad: item.cantidad,
+  });
+}
 
-      items: itemsVerificados,
+// Crear orden en Supabase
+const { data: orden } = await supabase.from('orders').insert({
+  usuario_id: req.usuario.id, subtotal, costo_envio: costoEnvio,
+  impuestos, total, direccion_envio: direccionEnvio,
+  stripe_payment_intent_id: paymentIntent.id,
+}).select().single();
 
-      direccionEnvio,
-
-      subtotal,
-      costoEnvio,
-      impuestos,
-      total,
-
-      stripePaymentIntentId:
-        paymentIntent.id,
-
-      stripePaymentStatus:
-        'pending',
-
-      estado:
-        'pendiente',
-    });
+// Insertar items
+await supabase.from('order_items').insert(
+  itemsVerificados.map(i => ({ ...i, orden_id: orden.id }))
+);
 
     // ───────────────────────────────────────────
     // Respuesta

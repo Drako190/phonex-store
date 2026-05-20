@@ -1,59 +1,47 @@
-// ════ routes/users.js ════
+// routes/users.js — Con Supabase
 const router = require('express').Router();
-const User = require('../models/User');
+const { supabase } = require('../config/db');
 const { proteger, soloAdmin } = require('../middleware/auth');
 
-// Actualizar perfil
 router.put('/perfil', proteger, async (req, res) => {
   try {
     const permitidos = ['nombre', 'apellido', 'telefono', 'avatar'];
     const updates = {};
     permitidos.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
-    const usuario = await User.findByIdAndUpdate(req.usuario.id, updates, { new: true, runValidators: true });
-    res.json({ usuario });
+    const { data } = await supabase.from('users').update(updates)
+      .eq('id', req.usuario.id).select('id,nombre,apellido,email,rol,avatar').single();
+    res.json({ usuario: data });
   } catch (err) { res.status(500).json({ error: 'Error al actualizar perfil' }); }
 });
 
-// Wishlist: toggle
 router.post('/wishlist/:productoId', proteger, async (req, res) => {
   try {
-    const usuario = await User.findById(req.usuario.id);
-    const idx = usuario.wishlist.indexOf(req.params.productoId);
-    if (idx > -1) { usuario.wishlist.splice(idx, 1); }
-    else { usuario.wishlist.push(req.params.productoId); }
-    await usuario.save();
-    res.json({ wishlist: usuario.wishlist, enWishlist: idx === -1 });
+    const { data: existe } = await supabase.from('wishlist')
+      .select('id').eq('usuario_id', req.usuario.id).eq('producto_id', req.params.productoId).single();
+    if (existe) {
+      await supabase.from('wishlist').delete().eq('id', existe.id);
+      res.json({ enWishlist: false });
+    } else {
+      await supabase.from('wishlist').insert({ usuario_id: req.usuario.id, producto_id: req.params.productoId });
+      res.json({ enWishlist: true });
+    }
   } catch (err) { res.status(500).json({ error: 'Error' }); }
 });
 
-// Agregar dirección
 router.post('/direcciones', proteger, async (req, res) => {
   try {
-    const usuario = await User.findById(req.usuario.id);
-    usuario.direcciones.push(req.body);
-    await usuario.save();
-    res.status(201).json({ direcciones: usuario.direcciones });
+    const { data } = await supabase.from('direcciones')
+      .insert({ ...req.body, usuario_id: req.usuario.id }).select();
+    res.status(201).json({ direcciones: data });
   } catch (err) { res.status(500).json({ error: 'Error' }); }
 });
 
-// Admin: listar usuarios
 router.get('/', proteger, soloAdmin, async (req, res) => {
   try {
-    const usuarios = await User.find({ activo: true }).select('-password').sort('-createdAt');
-    res.json({ usuarios });
+    const { data } = await supabase.from('users')
+      .select('id,nombre,apellido,email,rol,created_at').eq('activo', true).order('created_at', { ascending: false });
+    res.json({ usuarios: data });
   } catch (err) { res.status(500).json({ error: 'Error' }); }
 });
 
 module.exports = router;
-
-
-// ════ routes/payments.js ════
-// (Este archivo se usa para las rutas, el webhook se maneja en server.js directamente)
-const routerPay = require('express').Router();
-const paymentCtrl = require('../controllers/paymentController');
-
-routerPay.post('/create-payment-intent', proteger, paymentCtrl.createPaymentIntent);
-routerPay.post('/confirmar',             proteger, paymentCtrl.confirmarPago);
-// webhook se registra directamente en server.js antes del json parser
-
-module.exports = routerPay;
