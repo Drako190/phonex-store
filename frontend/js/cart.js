@@ -115,14 +115,22 @@ function updateCartUI() {
 
 // ── Ir al checkout ─────────────────────
 function goToCheckout() {
-  const user = getCurrentUser();
-  if (!user) {
+  const user  = getCurrentUser();
+  const token = localStorage.getItem('phonex_token');
+
+  // Verificar sesión activa
+  if (!user || !token) {
     toggleCart();
-    toast('Inicia sesión para continuar', 'warning');
+    toast('⚠️ Debes iniciar sesión para comprar', 'warning');
     openModal('loginModal');
     return;
   }
-  if (cart.length === 0) { toast('Tu carrito está vacío', 'warning'); return; }
+
+  if (cart.length === 0) {
+    toast('Tu carrito está vacío', 'warning');
+    return;
+  }
+
   toggleCart();
   showPage('checkout');
 }
