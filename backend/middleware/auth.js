@@ -4,61 +4,43 @@ const { supabase } = require('../config/db');
 
 exports.proteger = async (req, res, next) => {
   try {
-    // ── Leer el header Authorization ────────────
-    const authHeader = req.headers['authorization'] ||
-                       req.headers['Authorization'];
-
-    console.log('🔐 Auth header recibido:', authHeader ? 'SÍ' : 'NO');
+    const authHeader = req.headers['authorization'];
+    console.log('Header recibido:', authHeader?.substring(0, 30));
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No autorizado. Inicia sesión.' });
     }
 
-    const token = authHeader.substring(7); // Quitar "Bearer "
-    console.log('🎫 Token recibido (primeros 20 chars):', token.substring(0, 20));
+    const token = authHeader.substring(7).trim();
 
-    // ── Verificar JWT ────────────────────────────
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('✅ Token válido, usuario ID:', decoded.id);
+      console.log('Token OK, id:', decoded.id);
     } catch (err) {
-      console.log('❌ Token inválido:', err.name, err.message);
+      console.log('Token error:', err.name);
       if (err.name === 'TokenExpiredError') {
-        return res.status(401).json({
-          error: 'Sesión expirada. Inicia sesión nuevamente.',
-          tokenExpired: true,
-        });
+        return res.status(401).json({ error: 'Sesión expirada.', tokenExpired: true });
       }
       return res.status(401).json({ error: 'Token inválido' });
     }
 
-    // ── Buscar usuario en Supabase ───────────────
     const { data: usuario, error } = await supabase
       .from('users')
       .select('id, rol, email, activo')
       .eq('id', decoded.id)
       .single();
 
-    console.log('👤 Usuario encontrado:', usuario ? 'SÍ' : 'NO', error?.message || '');
+    console.log('Usuario DB:', usuario?.id, '| Error:', error?.message);
 
-    if (error || !usuario) {
-      return res.status(401).json({ error: 'Usuario no encontrado' });
+    if (error || !usuario || !usuario.activo) {
+      return res.status(401).json({ error: 'Usuario no encontrado o inactivo' });
     }
 
-    if (!usuario.activo) {
-      return res.status(401).json({ error: 'Usuario inactivo' });
-    }
-
-    req.usuario = {
-      id:    usuario.id,
-      rol:   usuario.rol,
-      email: usuario.email,
-    };
-
+    req.usuario = { id: usuario.id, rol: usuario.rol, email: usuario.email };
     next();
   } catch (err) {
-    console.error('❌ Error en middleware auth:', err);
+    console.error('Auth error:', err.message);
     res.status(401).json({ error: 'No autorizado' });
   }
 };

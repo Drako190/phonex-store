@@ -21,6 +21,8 @@ connectDB();
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // ── Seguridad ──────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
@@ -51,11 +53,13 @@ const generalLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: 'Demasiadas peticiones' },
+  validate: { xForwardedForHeader: false },
 });
 const authLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { error: 'Demasiados intentos' },
+  validate: { xForwardedForHeader: false },
 });
 
 app.use('/api/', generalLimit);
