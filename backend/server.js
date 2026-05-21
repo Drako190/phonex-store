@@ -31,10 +31,12 @@ app.use(helmet({
 
 // ── CORS ───────────────────────────────────────
 app.use(cors({
-  origin: true,   // ← permite CUALQUIER origen (perfecto para desarrollo)
+  origin: [
+    'https://phonex-store.vercel.app',  // ← tu URL exacta de Vercel
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+  ],
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
 }));
 
 // ── Stripe Webhook (antes de express.json) ─────

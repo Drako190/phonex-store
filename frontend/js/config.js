@@ -5,7 +5,7 @@
 // 🔧 CAMBIA ESTA URL POR LA DE TU BACKEND
 // Si corres el backend localmente: http://localhost:5000
 // Si lo subes a un servidor: https://tu-dominio.com
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'https://srv-d86409vavr4c73deepgg.onrender.com/api';
 
 // Stripe Publishable Key (la pública, va aquí en el frontend)
 // Cámbiala por tu clave de Stripe
