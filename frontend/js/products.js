@@ -18,10 +18,10 @@ function renderProductCard(p) {
         ${enWish ? '❤️' : '🤍'}
       </button>
       <div class="product-img-wrap" onclick="showProductDetail('${p.id}')">
-        ${p.imagenPrincipal
-          ? `<img src="${p.imagenPrincipal}" alt="${p.nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+       ${p.imagen_principal
+       ? `<img src="${p.imagen_principal}" alt="${p.nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
           : ''}
-        <div class="product-img-placeholder" style="${p.imagenPrincipal ? 'display:none' : ''}">
+        <div class="product-img-placeholder" style="${p.imagen_principal ? 'display:none' : ''}">
           ${getCategoryEmoji(p.categoria)}
         </div>
       </div>
