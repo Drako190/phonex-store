@@ -3,7 +3,7 @@
 // ════════════════════════════════════════════════
 
 // ── URL de tu backend en Render ───────────────
-const API_BASE = 'https://srv-d86409vavr4c73deepgg.onrender.com/api';
+const API_BASE = 'https://backend-de-phonex.onrender.com/api';
 
 // ── Stripe Publishable Key ────────────────────
 const STRIPE_PK = 'pk_test_51TYgZ3GyxeIaw9rxeeectssnt2N5mh5Z9BzH0uexiLEn51YW40Gz9xmXTzZw8tetbJbV66UodOxWamdSVgLnv7MD00v2tMgFDb';
