@@ -14,10 +14,10 @@ function renderProductCard(p) {
   return `
     <div class="product-card">
       ${renderBadge(p.badge)}
-      <button class="product-wishlist ${enWish ? 'active' : ''}" onclick="toggleWishlist('${p._id}',this)">
+      <button class="product-wishlist ${enWish ? 'active' : ''}" onclick="toggleWishlist('${p.id}',this)">
         ${enWish ? '❤️' : '🤍'}
       </button>
-      <div class="product-img-wrap" onclick="showProductDetail('${p._id}')">
+      <div class="product-img-wrap" onclick="showProductDetail('${p.id}')">
         ${p.imagenPrincipal
           ? `<img src="${p.imagenPrincipal}" alt="${p.nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
           : ''}
@@ -25,7 +25,7 @@ function renderProductCard(p) {
           ${getCategoryEmoji(p.categoria)}
         </div>
       </div>
-      <div class="product-info" onclick="showProductDetail('${p._id}')" style="cursor:pointer">
+      <div class="product-info" onclick="showProductDetail('${p.id}')" style="cursor:pointer">
         <div class="product-brand">${p.marca}</div>
         <div class="product-name">${p.nombre}</div>
         ${specs ? `<div class="product-specs"><span class="spec-chip">${specs}</span></div>` : ''}
@@ -38,10 +38,10 @@ function renderProductCard(p) {
       </div>
       <div class="product-actions">
         <button class="btn btn-primary" style="flex:1" onclick="addToCart({
-          id:'${p._id}', nombre:'${p.nombre.replace(/'/g,"\\'")}',
+          id:'${p._id || p.id}', nombre:'${p.nombre.replace(/'/g,"\\'")}',
           marca:'${p.marca}', precio:${p.precio}, emoji:'${getCategoryEmoji(p.categoria)}'
         })">🛒 Agregar</button>
-        <button class="btn btn-secondary btn-sm" onclick="showProductDetail('${p._id}')">Ver</button>
+        <button class="btn btn-secondary btn-sm" onclick="showProductDetail('${p.id}')">Ver</button>
       </div>
     </div>`;
 }
@@ -193,12 +193,12 @@ async function showProductDetail(id) {
             </div>` : ''}
           <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
             <button class="btn btn-primary btn-lg" style="flex:1" onclick="addToCart({
-              id:'${p._id}', nombre:'${p.nombre.replace(/'/g,"\\'")}',
+              id:'${p.id}', nombre:'${p.nombre.replace(/'/g,"\\'")}',
               marca:'${p.marca}', precio:${p.precio}, emoji:'${getCategoryEmoji(p.categoria)}'
             })" ${p.stock === 0 ? 'disabled' : ''}>
               🛒 Agregar al carrito
             </button>
-            <button class="btn-icon" onclick="toggleWishlist('${p._id}',this)">🤍</button>
+            <button class="btn-icon" onclick="toggleWishlist('${p.id}',this)">🤍</button>
           </div>
         </div>
       </div>`;
