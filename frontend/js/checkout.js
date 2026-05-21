@@ -66,16 +66,34 @@ function loadCheckoutPage() {
 async function procesarPago() {
   const btn = document.getElementById('payBtn');
 
-  // Validar campos de envío
-  const campos = ['ship-nombre','ship-apellido','ship-calle','ship-ciudad','ship-estado','ship-cp'];
+  // ── Verificar sesión ───────────────────────
+  const token = localStorage.getItem('phonex_token');
+  if (!token) {
+    toast('⚠️ Debes iniciar sesión para comprar', 'warning');
+    openModal('loginModal');
+    return;
+  }
+
+  // ── Validar campos de envío ────────────────
+  const campos = [
+    { id:'ship-nombre',   label:'Nombre' },
+    { id:'ship-apellido', label:'Apellido' },
+    { id:'ship-calle',    label:'Calle' },
+    { id:'ship-ciudad',   label:'Ciudad' },
+    { id:'ship-estado',   label:'Estado' },
+    { id:'ship-cp',       label:'Código Postal' },
+  ];
+
   for (const c of campos) {
-    if (!document.getElementById(c)?.value.trim()) {
-      toast('Completa todos los campos de envío', 'error'); return;
+    if (!document.getElementById(c.id)?.value.trim()) {
+      toast(`⚠️ El campo "${c.label}" es obligatorio`, 'error');
+      return;
     }
   }
 
   if (!stripeInstance || !cardElement) {
-    toast('Error con Stripe. Verifica tu clave pública.', 'error'); return;
+    toast('⚠️ Error con Stripe. Verifica tu clave pública.', 'error');
+    return;
   }
 
   btn.disabled = true;
@@ -89,20 +107,49 @@ async function procesarPago() {
       cp:     document.getElementById('ship-cp').value.trim(),
     };
 
-    // 1. Crear PaymentIntent en el backend
-    const { clientSecret, orderId } = await api.post('/payments/create-payment-intent', {
-      items: cart.map(i => ({ productoId: i.id, nombre: i.nombre, cantidad: i.qty })),
-      direccionEnvio,
-    }, true);
+    const itemsCarrito = cart.map(i => ({
+      productoId: i.id,
+      nombre:     i.nombre,
+      cantidad:   i.qty,
+    }));
 
-    // 2. Confirmar pago con Stripe
-    const cardName = document.getElementById('card-name').value || 'Cliente';
-    const { paymentIntent, error } = await stripeInstance.confirmCardPayment(clientSecret, {
-      payment_method: {
-        card: cardElement,
-        billing_details: { name: cardName },
+    // ── Llamar al backend CON token ────────────
+    const response = await fetch(
+      `${API_BASE}/payments/create-payment-intent`,
+      {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          items:          itemsCarrito,
+          direccionEnvio: direccionEnvio,
+        }),
       }
-    });
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      toast('❌ ' + (data.error || 'Error al procesar'), 'error');
+      return;
+    }
+
+    const { clientSecret, orderId } = data;
+
+    // ── Confirmar pago con Stripe ──────────────
+    const cardName = document.getElementById('card-name').value || 'Cliente';
+
+    const { paymentIntent, error } = await stripeInstance.confirmCardPayment(
+      clientSecret,
+      {
+        payment_method: {
+          card:            cardElement,
+          billing_details: { name: cardName },
+        },
+      }
+    );
 
     if (error) {
       document.getElementById('stripe-card-error').textContent = error.message;
@@ -111,12 +158,28 @@ async function procesarPago() {
     }
 
     if (paymentIntent.status === 'succeeded') {
-      // 3. Confirmar en el backend
-      await api.post('/payments/confirmar', { paymentIntentId: paymentIntent.id, orderId }, true);
+      // ── Confirmar en el backend ──────────────
+      await fetch(
+        `${API_BASE}/payments/confirmar`,
+        {
+          method:  'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            paymentIntentId: paymentIntent.id,
+            orderId:         orderId,
+          }),
+        }
+      );
+
       clearCart();
       showSuccessPage(orderId);
     }
+
   } catch (err) {
+    console.error('Error pago:', err);
     toast('❌ ' + err.message, 'error');
   } finally {
     btn.disabled = false;
