@@ -129,16 +129,7 @@
         <span class="category-name">Fundas</span>
         <span class="category-count" id="cat-count-funda">Cargando...</span>
       </a>
-      <a href="#" class="category-card" onclick="filterCategory('cargador')">
-        <span class="category-icon">🔌</span>
-        <span class="category-name">Cargadores</span>
-        <span class="category-count" id="cat-count-cargador">Cargando...</span>
-      </a>
-      <a href="#" class="category-card" onclick="filterCategory('cargador-inalambrico')">
-        <span class="category-icon">⚡</span>
-        <span class="category-name">Carga Inalámbrica</span>
-        <span class="category-count" id="cat-count-cargador-inalambrico">Cargando...</span>
-      </a>
+      
       <a href="#" class="category-card" onclick="filterCategory('power-bank')">
         <span class="category-icon">🔋</span>
         <span class="category-name">Power Banks</span>
@@ -222,9 +213,8 @@
       <button class="filter-chip" onclick="setFilter('categoria','audifonos')">🎧 Audífonos</button>
       <button class="filter-chip" onclick="setFilter('categoria','funda')">🛡️ Fundas</button>
       <button class="filter-chip" onclick="setFilter('categoria','cargador')">🔌 Cargadores</button>
-      <button class="filter-chip" onclick="setFilter('categoria','cargador-inalambrico')">⚡ Inalámbrico</button>
       <button class="filter-chip" onclick="setFilter('categoria','cable')">🔗 Cables</button>
-      <button class="filter-chip" onclick="setFilter('categoria','power-bank')">🔋 Power Banks</button>
+      
     </div>
 
     <!-- Filtros de precio -->
@@ -426,11 +416,6 @@
     <button class="modal-close" onclick="closeModal('loginModal')">✕</button>
     <div class="modal-title">Bienvenido a <span style="color:var(--accent)">PhoneX</span></div>
     <div class="modal-subtitle">Inicia sesión para continuar</div>
-    <div class="social-login">
-      <button class="btn-social" onclick="toast('Google Login próximamente','warning')">🔵 Google</button>
-      <button class="btn-social" onclick="toast('Apple Login próximamente','warning')">🍎 Apple</button>
-    </div>
-    <div class="divider">o con tu correo</div>
     <div id="loginError" class="form-error" style="display:none;margin-bottom:1rem;padding:0.75rem;background:rgba(255,82,82,0.1);border-radius:8px;border:1px solid var(--error)"></div>
     <form onsubmit="handleLogin(event)">
       <div class="form-group">
