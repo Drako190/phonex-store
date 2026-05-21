@@ -161,31 +161,66 @@ function showAccountTab(tab) {
 
 // ── Cargar pedidos ──────────────────────
 async function loadOrders() {
+  const container = document.getElementById('orders-list');
+  if (!container) return;
+
   try {
     const data = await api.getAuth('/orders/mis-ordenes');
-    const container = document.getElementById('orders-list');
-    if (!container) return;
-    if (data.ordenes.length === 0) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📦</div><h3>Sin pedidos aún</h3><p>Cuando hagas una compra, aparecerá aquí.</p></div>`;
+
+    if (!data || !data.ordenes || data.ordenes.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📦</div>
+          <h3>Sin pedidos aún</h3>
+          <p>Cuando hagas una compra aparecerá aquí.</p>
+          <button class="btn btn-primary mt-2" onclick="showPage('catalog')">
+            Ir a la tienda
+          </button>
+        </div>`;
       return;
     }
+
     container.innerHTML = data.ordenes.map(o => `
       <div class="card" style="padding:1.25rem;margin-bottom:1rem">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
           <div>
-            <div style="font-family:'Syne',sans-serif;font-weight:700">PX-${o._id.slice(-8).toUpperCase()}</div>
-            <div style="font-size:0.8rem;color:var(--text-muted)">${new Date(o.createdAt).toLocaleDateString('es-MX')}</div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700">
+              PX-${o.id.slice(-8).toUpperCase()}
+            </div>
+            <div style="font-size:0.8rem;color:var(--text-muted)">
+              ${new Date(o.created_at).toLocaleDateString('es-MX', {
+                year:'numeric', month:'long', day:'numeric'
+              })}
+            </div>
           </div>
-          <span class="order-status status-${o.estado}">${o.estado.toUpperCase()}</span>
-          <div style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent)">${formatPrice(o.total)}</div>
+          <span class="order-status status-${o.estado}">
+            ${o.estado.toUpperCase()}
+          </span>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent)">
+            ${formatPrice(o.total)}
+          </div>
         </div>
-        <div style="margin-top:0.75rem;font-size:0.82rem;color:var(--text-muted)">
-          ${o.items?.length || 0} producto(s)
+        <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border)">
+          ${(o.order_items || []).map(item => `
+            <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.25rem">
+              • ${item.nombre} x${item.cantidad} — ${formatPrice(item.precio * item.cantidad)}
+            </div>
+          `).join('')}
         </div>
-      </div>`).join('');
+      </div>
+    `).join('');
+
   } catch (err) {
-    const c = document.getElementById('orders-list');
-    if (c) c.innerHTML = '<p style="color:var(--error)">Error al cargar pedidos</p>';
+    console.error('Error cargando pedidos:', err);
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">⚠️</div>
+        <h3>Error al cargar pedidos</h3>
+        <p>${err.message}</p>
+        <button class="btn btn-primary mt-2" onclick="loadOrders()">
+          Reintentar
+        </button>
+      </div>`;
   }
 }
 
