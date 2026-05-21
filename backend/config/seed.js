@@ -24,7 +24,7 @@ const productos = [
     categoria:'smartphone', 
     precio:27999,
     badge:'destacado',
-    imagen_principal: '/images/productos/Samsung Galaxy S25 Ultra.png',   // ← aquí
+    imagen_principal: '/images/productos/Samsunggalaxy.png',   // ← aquí
     descripcion:'El Ultra definitivo con Snapdragon 8 Elite.',
     stock:15,
     especificaciones:{ pantalla:'6.8" QHD+', procesador:'Snapdragon 8 Elite' }
@@ -36,7 +36,7 @@ const productos = [
     precio:22999, 
     precio_antes:24999,
     badge:'oferta',
-    imagen_principal: '/images/productos/Google Pixel 9 Pro.png',       // ← aquí
+    imagen_principal: '/images/productos/Googlepixel.png',       // ← aquí
     descripcion:'La mejor IA en un smartphone.',
     stock:8,
     especificaciones:{ pantalla:'6.8" OLED', procesador:'Tensor G4' }
@@ -48,7 +48,7 @@ const productos = [
     precio:5999, 
     precio_antes:6499,
     badge:'oferta',
-    imagen_principal: '/images/productos/AirPods Pro 2.png', // ← aquí
+    imagen_principal: '/images/productos/AirPodspro.png', // ← aquí
     descripcion:'Cancelación de ruido activa con chip H2.',
     stock:40,
     especificaciones:{ conectividad:'Bluetooth 5.3', bateria:'30 hrs' }
@@ -59,7 +59,7 @@ const productos = [
     categoria:'tablet', 
     precio:24999,
     badge:'nuevo',
-    imagen_principal: '/images/productos/iPad Pro M4.png',  // ← aquí
+    imagen_principal: '/images/productos/iPadpro.png',  // ← aquí
     descripcion:'La tablet más potente con chip M4.',
     stock:10,
     especificaciones:{ pantalla:'11" OLED', procesador:'Apple M4' }
@@ -71,7 +71,7 @@ const productos = [
     precio:8999, 
     precio_antes:9999,
     badge:'oferta',
-    imagen_principal: '/images/productos/Apple Watch Series 10.png', // ← aquí
+    imagen_principal: '/images/productos/Applewatch.png', // ← aquí
     descripcion:'El Apple Watch más delgado.',
     stock:25,
     especificaciones:{ pantalla:'46mm Retina', bateria:'36 hrs' }
@@ -83,7 +83,7 @@ const productos = [
     precio:649, 
     precio_antes:799,
     badge:'oferta',
-    imagen_principal: '/images/productos/Cargador USB-C 65W GaN.png',  // ← aquí
+    imagen_principal: '/images/productos/Cargadorusb.png',  // ← aquí
     descripcion:'Cargador GaN compacto de 65W.',
     stock:60,
     especificaciones:{}
@@ -93,7 +93,7 @@ const productos = [
     marca:'Apple', 
     categoria:'funda', 
     precio:999,
-    imagen_principal: '/images/productos/Funda Silicona iPhone 16 Pro.png',  // ← aquí
+    imagen_principal: '/images/productos/Fundasiliconapro.png',  // ← aquí
     descripcion:'Funda oficial de silicona con MagSafe.',
     stock:50,
     especificaciones:{}
