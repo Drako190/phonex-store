@@ -159,16 +159,17 @@ async function showProductDetail(id) {
         <span style="color:var(--text-muted);font-size:0.85rem">${p.marca} / ${p.nombre}</span>
       </div>
       <div class="product-detail-grid">
-        <div class="product-gallery">${getCategoryEmoji(p.categoria)}</div>
-        <div style="display:flex;flex-direction:column;gap:1.25rem">
-          <div>
-            <div style="font-size:0.8rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:0.4rem">${p.marca}</div>
-            <h1 style="font-size:2rem;font-weight:800;line-height:1.2">${p.nombre}</h1>
-          </div>
-          <div style="display:flex;align-items:center;gap:0.75rem">
-            ${renderStars(p.rating || 0)}
-            <span style="color:var(--text-muted);font-size:0.85rem">${p.numReviews || 0} reseñas</span>
-          </div>
+        
+<div class="product-gallery">
+  ${p.imagen_principal
+    ? `<img src="${p.imagen_principal}" alt="${p.nombre}"
+           style="max-height:320px;max-width:90%;object-fit:contain;"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`
+    : ''}
+  <span style="${p.imagen_principal ? 'display:none' : ''}">
+    ${getCategoryEmoji(p.categoria)}
+  </span>
+</div>
           <div style="display:flex;align-items:center;gap:1rem">
             <span style="font-family:'Syne',sans-serif;font-size:2.5rem;font-weight:800">${formatPrice(p.precio)}</span>
             ${p.precioAntes ? `<span style="font-size:1rem;color:var(--text-muted);text-decoration:line-through">${formatPrice(p.precioAntes)}</span>` : ''}
