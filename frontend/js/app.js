@@ -77,7 +77,11 @@ function showAccountTab(tab) {
           </div>
           <div class="form-group">
             <label class="form-label">Teléfono</label>
-            <input type="tel" class="form-input" id="prof-tel" placeholder="+52 000 000 0000">
+            <input type="tel" class="form-input" id="prof-tel" 
+       placeholder="0000 0000 0000"
+       maxlength="12"
+       oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,12)"
+       onkeypress="return /[0-9]/.test(event.key)">
           </div>
           <button type="submit" class="btn btn-primary">Guardar cambios</button>
         </form>
