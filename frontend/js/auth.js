@@ -49,11 +49,64 @@ function checkPasswordStrength(val) {
   text.textContent = lvl.label;
   text.style.color = lvl.color;
 }
+// ── Validar email ──────────────────────────────
+function validarEmail(email) {
+  // Dominios permitidos
+  const dominiosPermitidos = [
+    'gmail.com', 'outlook.com', 'hotmail.com', 'hotmail.es',
+    'yahoo.com', 'yahoo.com.mx', 'icloud.com', 'live.com',
+    'live.com.mx', 'msn.com', 'me.com', 'protonmail.com',
+    'outlook.es', 'googlemail.com', 'uc.cl', 'unam.mx',
+    'ipn.mx', 'tec.mx', 'itesm.mx', 'edu.mx'
+  ];
 
+  // ── Validación visual en tiempo real ───────────
+function validarEmailEnVivo(input) {
+  const resultado = validarEmail(input.value.trim());
+  if (input.value.length > 5) {
+    if (resultado.valido) {
+      input.style.borderColor = 'var(--success)';
+      input.style.boxShadow   = '0 0 0 3px rgba(0,230,118,0.1)';
+    } else {
+      input.style.borderColor = 'var(--error)';
+      input.style.boxShadow   = '0 0 0 3px rgba(255,82,82,0.1)';
+    }
+  } else {
+    input.style.borderColor = '';
+    input.style.boxShadow   = '';
+  }
+}
+
+  // Formato básico de email
+  const formatoValido = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email);
+  if (!formatoValido) return { valido: false, mensaje: 'El formato del email no es válido' };
+
+  // Debe tener punto después del @
+  const dominio = email.split('@')[1];
+  if (!dominio.includes('.')) return { valido: false, mensaje: 'El email debe tener un dominio válido (.com, .mx, etc)' };
+
+  // Verificar que termine en .com, .mx, .es, .org, .net, .edu
+  const extensionesPermitidas = ['.com', '.mx', '.es', '.org', '.net', '.edu', '.io', '.co'];
+  const tieneExtensionValida = extensionesPermitidas.some(ext => dominio.endsWith(ext));
+  if (!tieneExtensionValida) {
+    return { valido: false, mensaje: 'El email debe terminar en .com, .mx, .es, .org, .net o .edu' };
+  }
+
+  // Verificar dominio permitido
+  const dominioValido = dominiosPermitidos.some(d => dominio === d || dominio.endsWith('.' + d));
+  if (!dominioValido) {
+    return {
+      valido: false,
+      mensaje: 'Solo se permiten correos de: Gmail, Outlook, Hotmail, Yahoo, iCloud, Live o correos institucionales (.edu.mx)'
+    };
+  }
+
+  return { valido: true };
+}
 // ── REGISTRAR ──────────────────────────
 async function handleRegister(e) {
   e.preventDefault();
-  const btn = document.getElementById('registerBtn');
+  const btn    = document.getElementById('registerBtn');
   const errDiv = document.getElementById('registerError');
   errDiv.style.display = 'none';
 
@@ -64,9 +117,19 @@ async function handleRegister(e) {
   const password = document.getElementById('regPassword').value;
   const confirm  = document.getElementById('regPasswordConfirm').value;
 
+  // ── Validar email ──────────────────────────
+  const emailCheck = validarEmail(email);
+  if (!emailCheck.valido) {
+    errDiv.textContent = emailCheck.mensaje;
+    errDiv.style.display = 'block';
+    return;
+  }
+
+  // ── Validar contraseñas ────────────────────
   if (password !== confirm) {
     errDiv.textContent = 'Las contraseñas no coinciden';
-    errDiv.style.display = 'block'; return;
+    errDiv.style.display = 'block';
+    return;
   }
 
   btn.disabled = true;
@@ -96,6 +159,14 @@ async function handleLogin(e) {
 
   const email    = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
+
+  // ── Validar email ──────────────────────────
+  const emailCheck = validarEmail(email);
+  if (!emailCheck.valido) {
+    errDiv.textContent = emailCheck.mensaje;
+    errDiv.style.display = 'block';
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Ingresando...';
