@@ -220,12 +220,18 @@ async function handleForgotPassword(e) {
 function logout() {
   localStorage.removeItem('phonex_token');
   localStorage.removeItem('phonex_user');
+  localStorage.removeItem('phonex_cart');      // ← borra el carrito
+  localStorage.removeItem('phonex_wishlist');  // ← borra favoritos
+
+  // Resetear carrito en memoria
+  cart = [];
+  updateCartUI();
+
   updateNavAuth(null);
   toast('👋 Sesión cerrada');
   showPage('home');
   closeUserMenu();
 }
-
 // ── GUARDAR SESIÓN ─────────────────────
 function saveSession(token, usuario) {
   localStorage.setItem('phonex_token', token);
